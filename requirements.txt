@@ -3,6 +3,6 @@ gunicorn
 celery
 redis
 requests
-google-generativeai
+google-genai
 python-dotenv
 gevent
