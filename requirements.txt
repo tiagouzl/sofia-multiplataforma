@@ -1,2 +1,8 @@
-Flask 
+Flask
+gunicorn
+celery
+redis
 requests
+google-generativeai
+python-dotenv
+gevent
