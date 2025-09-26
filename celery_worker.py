@@ -9,13 +9,19 @@ from requests.exceptions import RequestException
 # 1. Configuração do Celery e Redis (Broker/Backend)
 # ----------------------------------------------------
 
-# Lê a URL do Upstash Redis. O Render injetará essa variável.
-REDIS_URL = os.getenv('UPSTASH_REDIS_URL')
+# Lê a URL do Celery Broker (prioriza a variável configurada no Railway)
+REDIS_URL = os.getenv('CELERY_BROKER_URL') 
+
+if not REDIS_URL:
+    # Se a variável do Celery não estiver lá, tenta o nome UPSTASH ou REDIS_URL (para compatibilidade)
+    REDIS_URL = os.getenv('UPSTASH_REDIS_URL') or os.getenv('REDIS_URL')
+
 if not REDIS_URL:
     # Fallback para ambiente de desenvolvimento local
-    print("AVISO: UPSTASH_REDIS_URL não configurada. O Celery não funcionará.")
+    print("AVISO: URL do Celery Broker não configurada. O Celery não funcionará.")
 
 # Cria a aplicação Celery
+# Se REDIS_URL for None aqui, o Celery falha corretamente, mas com a variável mapeada, ele deve conectar.
 celery_app = Celery('sofia_worker', broker=REDIS_URL, backend=REDIS_URL)
 celery_app.conf.timezone = 'America/Sao_Paulo' 
 celery_app.conf.broker_connection_retry_on_startup = True # Tenta reconectar ao Redis
@@ -122,7 +128,7 @@ def process_ai_response(self, platform, from_id, message):
         if self.request.retries >= self.max_retries:
             fallback_reply = "Desculpe, estou com um pequeno problema técnico. Um atendente entrará em contato em breve para te ajudar!"
             # Tenta enviar o fallback sem mais retentativas do Celery (evita loop infinito)
-            send_message(self._get_dummy_task(), platform, from_id, fallback_reply) 
+            send_message(_get_dummy_task(), platform, from_id, fallback_reply) 
         
         # Se não for o último retry, tenta novamente
         raise self.retry(exc=e, countdown=10)
